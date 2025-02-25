@@ -46,9 +46,6 @@ func main() {
 	//init cron
 	c := croner.New()
 
-	// Only leader should start the cron jobs and run the main logic
-	c.Start()
-
 	// Add PerformOrderInvoiceSync job to run every 4 hours
 	_, err = c.AddFunc("@every 4h", func() {
 		cron.PerformOrderInvoiceSync(maxadminDB, intertnalDB, abraClient)
@@ -60,4 +57,10 @@ func main() {
 	if err != nil {
 		log.Error().Msg(err.Error())
 	}
+
+	// Start the cron scheduler
+	c.Start()
+
+	// Prevent the program from exiting
+	select {}
 }
