@@ -5,6 +5,7 @@ import (
 
 	"github.com/Pacerino/postal-go"
 	croner "github.com/robfig/cron/v3"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/anaryk/maximal-limit-abra-sync/pkg/abra"
@@ -13,6 +14,8 @@ import (
 )
 
 func main() {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
 	if os.Getenv("DB_MAXADMIN_HOST") == "" || os.Getenv("DB_MAXADMIN_USER") == "" || os.Getenv("DB_MAXADMIN_PASSWORD") == "" || os.Getenv("DB_MAXADMIN_NAME") == "" || os.Getenv("DB_INTERNAL_HOST") == "" || os.Getenv("DB_INTERNAL_USER") == "" || os.Getenv("DB_INTERNAL_PASSWORD") == "" || os.Getenv("DB_INTERNAL_NAME") == "" || os.Getenv("ABRA_USER") == "" || os.Getenv("ABRA_PASSWORD") == "" || os.Getenv("POSTAL_URL") == "" || os.Getenv("POSTAL_API_KEY") == "" {
 		log.Fatal().Msg("Missing environment variables for maxadmin database")
 	}
