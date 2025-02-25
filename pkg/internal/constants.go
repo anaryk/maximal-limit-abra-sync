@@ -1,9 +1,9 @@
 package internal
 
 const (
-	AbraBaseURL               string = "https://demo.flexibee.eu"
+	AbraBaseURL               string = "https://power-limit.flexibee.eu"
 	AbraCustomerContantURL    string = "adresar"
-	AbraCompany               string = "demo"
+	AbraCompany               string = "power_limit_s_r_o_"
 	AbraVydanaFakturaID       string = "6"
 	AbraAccountingOperationID string = "11"
 
