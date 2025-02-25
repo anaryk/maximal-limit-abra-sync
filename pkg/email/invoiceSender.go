@@ -20,12 +20,13 @@ func SendInvoiceEmail(email string, invoiceID string, postalClien *postal.Client
 	message := &postal.SendRequest{
 		To:      []string{email},
 		From:    "info@maximal-limit.cz",
-		Subject: fmt.Sprintf("Faktura %s za služby Maximal Limit", invoiceID),
+		Subject: fmt.Sprintf("Faktura %s za služby Maximal Limit - Již uhrazeno ! Nehraďte - ", invoiceID),
 		HTMLBody: `<html>
             <body>
                 <p>Dobrý den,</p>
                 <p>Pořádek dělá přátele a proto zasíláme fakturu za naše služby.</p>
                 <p>Pokud máte jakékoli dotazy, neváhejte nás kontaktovat.</p>
+				<p><strong>Faktura byla hrazena platební kartou a je již uhrazena.</strong></p>
                 <p>S pozdravem,</p>
                 <p><strong>Maximal Limit</strong></p>
             </body>
