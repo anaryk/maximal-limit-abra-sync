@@ -1,0 +1,63 @@
+package main
+
+import (
+	"os"
+
+	"github.com/Pacerino/postal-go"
+	croner "github.com/robfig/cron/v3"
+	"github.com/rs/zerolog/log"
+
+	"github.com/anaryk/maximal-limit-abra-sync/pkg/abra"
+	"github.com/anaryk/maximal-limit-abra-sync/pkg/cron"
+	"github.com/anaryk/maximal-limit-abra-sync/pkg/db"
+)
+
+func main() {
+	if os.Getenv("DB_MAXADMIN_HOST") == "" || os.Getenv("DB_MAXADMIN_USER") == "" || os.Getenv("DB_MAXADMIN_PASSWORD") == "" || os.Getenv("DB_MAXADMIN_NAME") == "" || os.Getenv("DB_INTERNAL_HOST") == "" || os.Getenv("DB_INTERNAL_USER") == "" || os.Getenv("DB_INTERNAL_PASSWORD") == "" || os.Getenv("DB_INTERNAL_NAME") == "" || os.Getenv("ABRA_USER") == "" || os.Getenv("ABRA_PASSWORD") == "" || os.Getenv("POSTAL_URL") == "" || os.Getenv("POSTAL_API_KEY") == "" {
+		log.Fatal().Msg("Missing environment variables for maxadmin database")
+	}
+
+	if os.Getenv("ENABLE_EMAIL_CRON") == "" {
+		os.Setenv("ENABLE_EMAIL_CRON", "false")
+	}
+
+	client := postal.NewClient(os.Getenv("POSTAL_URL"), os.Getenv("POSTAL_API_KEY"))
+
+	maxadminDB, err := db.NewMySQLConnector(os.Getenv("DB_MAXADMIN_NAME"), os.Getenv("DB_MAXADMIN_HOST"), os.Getenv("DB_MAXADMIN_USER"), os.Getenv("DB_MAXADMIN_PASSWORD"))
+	if err != nil {
+		log.Error().Msg(err.Error())
+	}
+
+	intertnalDB, err := db.NewMySQLConnector(os.Getenv("DB_INTERNAL_NAME"), os.Getenv("DB_INTERNAL_HOST"), os.Getenv("DB_INTERNAL_USER"), os.Getenv("DB_INTERNAL_PASSWORD"))
+	if err != nil {
+		log.Error().Msg(err.Error())
+	}
+
+	intertnalDB.InitInternalDBIfNotExist()
+
+	abraClient := abra.NewAbraConnector(os.Getenv("ABRA_USER"), os.Getenv("ABRA_PASSWORD"))
+
+	//Run crons on start container
+	cron.PerformOrderInvoiceSync(maxadminDB, intertnalDB, abraClient)
+	cron.PerformTicketsInvoiceSync(maxadminDB, intertnalDB, abraClient)
+	if os.Getenv("ENABLE_EMAIL_CRON") == "true" {
+		cron.PerformEmailSendCron(intertnalDB, abraClient, client)
+	}
+	//init cron
+	c := croner.New()
+
+	// Only leader should start the cron jobs and run the main logic
+	c.Start()
+
+	// Add PerformOrderInvoiceSync job to run every 4 hours
+	_, err = c.AddFunc("@every 4h", func() {
+		cron.PerformOrderInvoiceSync(maxadminDB, intertnalDB, abraClient)
+		cron.PerformTicketsInvoiceSync(maxadminDB, intertnalDB, abraClient)
+		if os.Getenv("ENABLE_EMAIL_CRON") == "true" {
+			cron.PerformEmailSendCron(intertnalDB, abraClient, client)
+		}
+	})
+	if err != nil {
+		log.Error().Msg(err.Error())
+	}
+}
