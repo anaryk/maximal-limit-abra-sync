@@ -174,7 +174,7 @@ func PerformChipInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient *ab
 			}
 		}
 		items := []abra.FakturaPolozka{
-			{Popis: fmt.Sprintf("Fakturujeme vám čipy dle objednávky %s ze dne %s", chip.OrderNumber, chip.Created), Pocet: 1, CenaKus: utils.CalculateTotalPriceWithVat(chip.TotalPrice, float64(chip.PaymentVAT))},
+			{Popis: fmt.Sprintf("Fakturujeme vám čipy dle objednávky %s ze dne %s", chip.OrderNumber, chip.Created), Pocet: 1, CenaKus: utils.CalculateTotalPriceWithVat(chip.TotalPrice, float64(chip.VAT))},
 		}
 		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.GetCurrentDate(), utils.GetCurrentDate(), chip.InvoiceNum, items)
 		if err != nil {
