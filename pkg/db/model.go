@@ -108,3 +108,33 @@ type OrderInternalState struct {
 	Email       string `json:"email"`
 	InvoiceID   string `json:"invoice_id"`
 }
+
+type ChipOrder struct {
+	OrderID               int     `json:"order_id"`
+	LocaleID              int     `json:"locale_id"`
+	UserID                int     `json:"user_id"`
+	OrderNumber           string  `json:"order_number"`
+	Created               string  `json:"created"`
+	PaymentType           string  `json:"payment_type"`
+	TotalPrice            float64 `json:"total_price"`
+	CsobGWID              string  `json:"csob_gw_id"`
+	PaymentPrice          float64 `json:"payment_price"`
+	PaymentVAT            float64 `json:"payment_vat"`
+	OrderPaymentStatusID  int     `json:"order_payment_status_id"`
+	PaymentSettings       string  `json:"payment_settings"`
+	CurrencyID            int     `json:"currency_id"`
+	InvoiceNum            string  `json:"invoice_num"`
+	PaymentReceivedAt     string  `json:"payment_received_at"`
+	InvoiceCreated        string  `json:"invoice_created"`
+	CreditNoteNum         any     `json:"credit_note_num"`
+	CreditNoteCreated     any     `json:"credit_note_created"`
+	OrderCreatedEmailSend int     `json:"order_created_email_send"`
+	ChipProductID         int     `json:"chip_product_id"`
+	Price                 float64 `json:"price"`
+	VAT                   float64 `json:"vat"`
+	WasNotified           int     `json:"was_notified"`
+	AdminsNotified        int     `json:"admins_notified"`
+	CanBeDispensed        int     `json:"can_be_dispensed"`
+	DispensedAt           any     `json:"dispensed_at"`
+	WasNotifiedDispenser  int     `json:"was_notified_dispenser"`
+}

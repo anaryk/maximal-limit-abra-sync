@@ -131,3 +131,63 @@ func PerformTicketsInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient 
 	}
 
 }
+
+func PerformChipInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient *abra.Connector) {
+	chipData, err := maxadminDB.QueryPaysChipsInYear(utils.GetFirstDayOfActualYear())
+	if err != nil {
+		log.Err(err).Msg("Failed to query payed chips")
+		return
+	}
+	for _, chip := range chipData {
+		state, err := internalDB.QueryOrderProccesedState(chip.OrderNumber)
+		if err != nil {
+			log.Err(err).Msg("Failed to query chip state")
+			return
+		}
+		if state == internal.InternalDBStatusImported || state != "" {
+			log.Debug().Msg("Chip already imported")
+			continue
+		}
+		user, err := maxadminDB.QueryUserByID(chip.UserID)
+		if err != nil {
+			log.Err(err).Msg("Failed to query user")
+			return
+		}
+		contactExist, err := abraClient.CheckIfContactExist(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)))
+		if err != nil {
+			log.Err(err).Msg("Failed to check if contact exist")
+			return
+		}
+		if len(contactExist.Winstrom.Adresar) == 0 {
+			contact := abra.ContactData{
+				Name:       fmt.Sprintf("%s %s", user.Name, user.Surname),
+				Street:     fmt.Sprintf("%s %s", user.Street, user.HouseNumber),
+				City:       user.City,
+				PostalCode: user.ZipCode,
+				Email:      user.Email,
+				Mobile:     user.Phone,
+			}
+			_, err := abraClient.CreateContact(contact)
+			if err != nil {
+				log.Err(err).Msg("Failed to create contact")
+				return
+			}
+		}
+		items := []abra.FakturaPolozka{
+			{Popis: fmt.Sprintf("Fakturujeme vám čipy dle objednávky %s ze dne %s", chip.OrderNumber, chip.Created), Pocet: 1, CenaKus: utils.CalculateTotalPriceWithVat(chip.TotalPrice, float64(chip.PaymentVAT))},
+		}
+		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.GetCurrentDate(), utils.GetCurrentDate(), chip.InvoiceNum, items)
+		if err != nil {
+			log.Err(err).Msg("Failed to create invoice")
+			return
+		}
+		if resp.Winstrom.Success == "true" {
+			err := internalDB.InsertOrUpdateProcessedState(chip.OrderNumber, internal.InternalDBStatusImported, user.Email, resp.Winstrom.Results[0].ID)
+			if err != nil {
+				log.Err(err).Msg("Failed to insert chip status")
+				return
+			}
+			log.Info().Msgf("Chip %s imported: %s", chip.OrderNumber, resp.Winstrom.Results)
+		}
+	}
+}

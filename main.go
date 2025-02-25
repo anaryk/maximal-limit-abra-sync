@@ -40,6 +40,7 @@ func main() {
 	//Run crons on start container
 	cron.PerformOrderInvoiceSync(maxadminDB, intertnalDB, abraClient)
 	cron.PerformTicketsInvoiceSync(maxadminDB, intertnalDB, abraClient)
+	cron.PerformChipInvoiceSync(maxadminDB, intertnalDB, abraClient)
 	if os.Getenv("ENABLE_EMAIL_CRON") == "true" {
 		cron.PerformEmailSendCron(intertnalDB, abraClient, client)
 	}
@@ -50,6 +51,7 @@ func main() {
 	_, err = c.AddFunc("@every 4h", func() {
 		cron.PerformOrderInvoiceSync(maxadminDB, intertnalDB, abraClient)
 		cron.PerformTicketsInvoiceSync(maxadminDB, intertnalDB, abraClient)
+		cron.PerformChipInvoiceSync(maxadminDB, intertnalDB, abraClient)
 		if os.Getenv("ENABLE_EMAIL_CRON") == "true" {
 			cron.PerformEmailSendCron(intertnalDB, abraClient, client)
 		}
