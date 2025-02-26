@@ -2,6 +2,7 @@ package utils
 
 import (
 	"math"
+	"math/rand"
 	"strings"
 	"time"
 )
@@ -27,4 +28,13 @@ func CalculateTotalPriceWithVat(price float64, vat float64) float64 {
 func GetCurrentDate() string {
 	now := time.Now()
 	return now.Format("2006-01-02")
+}
+
+func GenerateRandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
 }
