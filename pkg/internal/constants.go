@@ -6,6 +6,7 @@ const (
 	AbraCompany               string = "power_limit_s_r_o_"
 	AbraVydanaFakturaID       string = "6"
 	AbraAccountingOperationID string = "11"
+	AbraPaymentCardID         string = "2"
 
 	InternalDBStatusImported string = "imported"
 	InternalDBStatusNew      string = "new"

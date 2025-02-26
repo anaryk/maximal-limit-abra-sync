@@ -61,14 +61,15 @@ type InvoiceRequest struct {
 }
 
 type FakturaVydana struct {
-	Kod            string           `json:"kod"`
-	DatVyst        string           `json:"datVyst"`
-	DatSplat       string           `json:"datSplat"`
-	StavUhrady     string           `json:"stavUhrK"`
-	Polozky        []FakturaPolozka `json:"polozkyFaktury"`
-	IdFirmy        string           `json:"firma"`
-	TypFaktury     string           `json:"typDokl"`
-	AccountingType string           `json:"typUcOp"`
+	Kod              string           `json:"kod"`
+	DatVyst          string           `json:"datVyst"`
+	DatSplat         string           `json:"datSplat"`
+	StavUhrady       string           `json:"stavUhrK"`
+	Polozky          []FakturaPolozka `json:"polozkyFaktury"`
+	IdFirmy          string           `json:"firma"`
+	TypFaktury       string           `json:"typDokl"`
+	AccountingType   string           `json:"typUcOp"`
+	FormaUhradyCislo string           `json:"formaUhradyCis"`
 }
 
 type FakturaPolozka struct {

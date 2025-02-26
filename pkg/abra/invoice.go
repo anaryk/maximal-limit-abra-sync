@@ -22,14 +22,15 @@ func (c *Connector) CreateInvoice(customerCode, issueDate, dueDate string, inter
 		}{
 			FakturaVydana: []FakturaVydana{
 				{
-					Kod:            internalNumber,
-					DatVyst:        issueDate,
-					DatSplat:       dueDate,
-					StavUhrady:     "stavUhr.uhrazenoRucne",
-					IdFirmy:        contactId,
-					Polozky:        items,
-					TypFaktury:     internal.AbraVydanaFakturaID,
-					AccountingType: internal.AbraAccountingOperationID,
+					Kod:              internalNumber,
+					DatVyst:          issueDate,
+					DatSplat:         dueDate,
+					StavUhrady:       "stavUhr.uhrazenoRucne",
+					IdFirmy:          contactId,
+					Polozky:          items,
+					TypFaktury:       internal.AbraVydanaFakturaID,
+					AccountingType:   internal.AbraAccountingOperationID,
+					FormaUhradyCislo: internal.AbraPaymentCardID,
 				},
 			},
 		},
