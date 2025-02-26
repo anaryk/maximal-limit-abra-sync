@@ -67,7 +67,7 @@ func (c *Connector) CreateInvoice(customerCode, issueDate, dueDate string, inter
 }
 
 func (c *Connector) GetPDFInvoiceAsBase64(invoiceID string) (string, error) {
-	url := fmt.Sprintf("%s/c/%s/faktura-vydana/%s.pdf", internal.AbraBaseURL, internal.AbraCompany, invoiceID)
+	url := fmt.Sprintf("%s/c/%s/faktura-vydana/%s.pdf?report-name=fakturaConfig", internal.AbraBaseURL, internal.AbraCompany, invoiceID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
