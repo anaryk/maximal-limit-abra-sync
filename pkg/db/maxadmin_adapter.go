@@ -1,7 +1,7 @@
 package db
 
 func (c *Connector) QueryPayedOrdersInYear(date string) ([]Order, error) {
-	rows, err := c.db.Query("SELECT o.id AS order_id, r.id AS reservation_id, o.locale_id, o.user_id, o.order_number, o.created, o.payment_type, o.total_price, o.csob_gw_id, o.payment_price, o.payment_vat, o.order_payment_status_id, o.payment_settings, o.currency_id, o.invoice_num, o.payment_received_at, o.invoice_created, o.credit_note_num, o.credit_note_created, o.order_created_email_send, r.service_id, r.start, r.end, r.options, r.canceled_by_id, r.canceled, r.cancel_reason, r.place_id, r.note, r.vat, r.price, r.google_id, r.capacity FROM `order` o RIGHT JOIN reservation r ON o.id = r.order_id WHERE o.payment_type = 'csob-gateway' AND o.created >= STR_TO_DATE('" + date + "', '%Y-%m-%d') AND o.payment_received_at IS NOT NULL AND r.end < NOW() AND r.canceled = 0")
+	rows, err := c.db.Query("SELECT o.id AS order_id, r.id AS reservation_id, o.locale_id, o.user_id, o.order_number, o.created, o.payment_type, o.total_price, o.csob_gw_id, o.payment_price, o.payment_vat, o.order_payment_status_id, o.payment_settings, o.currency_id, o.invoice_num, o.payment_received_at, o.invoice_created, o.credit_note_num, o.credit_note_created, o.order_created_email_send, r.service_id, r.start, r.end, r.options, r.canceled_by_id, r.canceled, r.cancel_reason, r.place_id, r.note, r.vat, r.price, r.google_id, r.capacity FROM `order` o RIGHT JOIN reservation r ON o.id = r.order_id WHERE o.payment_type = 'csob-gateway' AND o.created >= STR_TO_DATE('" + date + "', '%Y-%m-%d') AND o.payment_received_at IS NOT NULL AND r.end < NOW() AND r.canceled = 0 AND o.invoice_num IS NOT NULL")
 	if err != nil {
 		return nil, err
 	}
@@ -21,7 +21,7 @@ func (c *Connector) QueryPayedOrdersInYear(date string) ([]Order, error) {
 }
 
 func (c *Connector) QueryPaysChipsInYear(date string) ([]ChipOrder, error) {
-	rows, err := c.db.Query("SELECT o.id AS order_id, o.locale_id, o.user_id, o.order_number, o.created, o.payment_type, o.total_price, o.csob_gw_id, o.payment_price, o.payment_vat, o.order_payment_status_id, o.payment_settings, o.currency_id, o.invoice_num, o.payment_received_at, o.invoice_created, o.credit_note_num, o.credit_note_created, o.order_created_email_send, coi.chip_product_id, coi.price, coi.vat, coi.was_notified, coi.admins_notified, coi.can_be_dispensed, coi.dispensed_at, coi.was_notified_dispenser FROM `order` o INNER JOIN chip_order_item coi ON o.id = coi.order_id WHERE o.payment_type = 'csob-gateway' AND o.created >= STR_TO_DATE('" + date + "', '%Y-%m-%d') AND o.payment_received_at IS NOT NULL AND coi.price != 0")
+	rows, err := c.db.Query("SELECT o.id AS order_id, o.locale_id, o.user_id, o.order_number, o.created, o.payment_type, o.total_price, o.csob_gw_id, o.payment_price, o.payment_vat, o.order_payment_status_id, o.payment_settings, o.currency_id, o.invoice_num, o.payment_received_at, o.invoice_created, o.credit_note_num, o.credit_note_created, o.order_created_email_send, coi.chip_product_id, coi.price, coi.vat, coi.was_notified, coi.admins_notified, coi.can_be_dispensed, coi.dispensed_at, coi.was_notified_dispenser FROM `order` o INNER JOIN chip_order_item coi ON o.id = coi.order_id WHERE o.payment_type = 'csob-gateway' AND o.created >= STR_TO_DATE('" + date + "', '%Y-%m-%d') AND o.payment_received_at IS NOT NULL AND coi.price != 0 AND o.invoice_num IS NOT NULL")
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (c *Connector) QueryPaysChipsInYear(date string) ([]ChipOrder, error) {
 }
 
 func (c *Connector) QueryPayedTicketsInYear(date string) ([]Ticket, error) {
-	rows, err := c.db.Query("SELECT t.id AS ticket_id, t.price, t.order_id, t.vat, t.is_renew, t.validity_already_extended, o.locale_id, o.user_id, o.order_number, o.created, o.payment_type, o.total_price, o.csob_gw_id, o.payment_price, o.payment_vat, o.order_payment_status_id, o.payment_settings, o.currency_id, o.invoice_num, o.payment_received_at, o.invoice_created, o.credit_note_num, o.credit_note_created, o.order_created_email_send FROM ticket_order_item t RIGHT JOIN `order` o ON o.id = t.order_id WHERE o.payment_type = 'csob-gateway' AND o.order_payment_status_id = 1 AND o.created >= STR_TO_DATE('" + date + "', '%Y-%m-%d') AND t.id IS NOT NULL")
+	rows, err := c.db.Query("SELECT t.id AS ticket_id, t.price, t.order_id, t.vat, t.is_renew, t.validity_already_extended, o.locale_id, o.user_id, o.order_number, o.created, o.payment_type, o.total_price, o.csob_gw_id, o.payment_price, o.payment_vat, o.order_payment_status_id, o.payment_settings, o.currency_id, o.invoice_num, o.payment_received_at, o.invoice_created, o.credit_note_num, o.credit_note_created, o.order_created_email_send FROM ticket_order_item t RIGHT JOIN `order` o ON o.id = t.order_id WHERE o.payment_type = 'csob-gateway' AND o.order_payment_status_id = 1 AND o.created >= STR_TO_DATE('" + date + "', '%Y-%m-%d') AND t.id IS NOT NULL AND o.invoice_num IS NOT NULL")
 	if err != nil {
 		return nil, err
 	}

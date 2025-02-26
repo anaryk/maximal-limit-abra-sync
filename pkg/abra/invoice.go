@@ -2,7 +2,6 @@ package abra
 
 import (
 	"bytes"
-	"database/sql"
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,16 +9,12 @@ import (
 	"net/http"
 
 	"github.com/anaryk/maximal-limit-abra-sync/pkg/internal"
-	"github.com/anaryk/maximal-limit-abra-sync/pkg/utils"
 )
 
-func (c *Connector) CreateInvoice(customerCode, issueDate, dueDate string, internalNumber sql.NullString, items []FakturaPolozka) (*APIResponse, error) {
+func (c *Connector) CreateInvoice(customerCode, issueDate, dueDate string, internalNumber string, items []FakturaPolozka) (*APIResponse, error) {
 	contactId, err := c.GetContactIDByShortName(customerCode)
 	if err != nil {
 		return nil, err
-	}
-	if internalNumber.String == "" {
-		internalNumber.String = fmt.Sprintf("FV-%s", utils.GenerateRandomString(8))
 	}
 	invoice := InvoiceRequest{
 		Winstrom: struct {
@@ -27,7 +22,7 @@ func (c *Connector) CreateInvoice(customerCode, issueDate, dueDate string, inter
 		}{
 			FakturaVydana: []FakturaVydana{
 				{
-					Kod:            internalNumber.String,
+					Kod:            internalNumber,
 					DatVyst:        issueDate,
 					DatSplat:       dueDate,
 					StavUhrady:     "stavUhr.uhrazenoRucne",
