@@ -28,3 +28,8 @@ func GetCurrentDate() string {
 	now := time.Now()
 	return now.Format("2006-01-02")
 }
+
+// Methon for extract 2025-01-01 from time format 2025-01-16 22:03:23
+func ExtractDate(date string) string {
+	return date[:10]
+}

@@ -55,7 +55,7 @@ func PerformOrderInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient *a
 		items := []abra.FakturaPolozka{
 			{Popis: fmt.Sprintf("Fakturujeme vám služby dle objednávky %s ze dne %s", order.OrderNumber, order.Created), Pocet: 1, CenaKus: utils.CalculateTotalPriceWithVat(order.TotalPrice, float64(order.Vat))},
 		}
-		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.GetCurrentDate(), utils.GetCurrentDate(), order.InvoiceNum, items)
+		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.ExtractDate(order.Created), utils.ExtractDate(order.Created), order.InvoiceNum, items)
 		if err != nil {
 			log.Err(err).Msg("Failed to create invoice")
 			return
@@ -115,7 +115,7 @@ func PerformTicketsInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient 
 		items := []abra.FakturaPolozka{
 			{Popis: fmt.Sprintf("Fakturujeme vám permanentku %s ze dne %s", ticket.OrderNumber, ticket.Created), Pocet: 1, CenaKus: utils.CalculateTotalPriceWithVat(ticket.TotalPrice, float64(ticket.Vat))},
 		}
-		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.GetCurrentDate(), utils.GetCurrentDate(), ticket.InvoiceNum, items)
+		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.ExtractDate(ticket.Created), utils.ExtractDate(ticket.Created), ticket.InvoiceNum, items)
 		if err != nil {
 			log.Err(err).Msg("Failed to create invoice")
 			return
@@ -176,7 +176,7 @@ func PerformChipInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient *ab
 		items := []abra.FakturaPolozka{
 			{Popis: fmt.Sprintf("Fakturujeme vám čipy dle objednávky %s ze dne %s", chip.OrderNumber, chip.Created), Pocet: 1, CenaKus: utils.CalculateTotalPriceWithVat(chip.TotalPrice, float64(chip.VAT))},
 		}
-		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.GetCurrentDate(), utils.GetCurrentDate(), chip.InvoiceNum, items)
+		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.ExtractDate(chip.Created), utils.ExtractDate(chip.Created), chip.InvoiceNum, items)
 		if err != nil {
 			log.Err(err).Msg("Failed to create invoice")
 			return
