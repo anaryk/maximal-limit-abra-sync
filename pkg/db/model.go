@@ -138,3 +138,8 @@ type ChipOrder struct {
 	DispensedAt           any     `json:"dispensed_at"`
 	WasNotifiedDispenser  int     `json:"was_notified_dispenser"`
 }
+
+type SumupTransactionState struct {
+	TransactionID string
+	Imported      bool
+}

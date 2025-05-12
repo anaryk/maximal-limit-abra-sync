@@ -33,3 +33,15 @@ func GetCurrentDate() string {
 func ExtractDate(date string) string {
 	return date[:10]
 }
+
+// Extract EAM code from SumUP product description in format :EAM:12345569:EAM:
+func ExtractEAMCode(description string) string {
+	if strings.Contains(description, ":EAM:") {
+		start := strings.Index(description, ":EAM:") + len(":EAM:")
+		end := strings.Index(description[start:], ":EAM:")
+		if end != -1 {
+			return description[start : start+end]
+		}
+	}
+	return ""
+}

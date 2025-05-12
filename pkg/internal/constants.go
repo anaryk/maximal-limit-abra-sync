@@ -10,4 +10,7 @@ const (
 
 	InternalDBStatusImported string = "imported"
 	InternalDBStatusNew      string = "new"
+
+	SumUpAPITransactionLimit int    = 2000
+	SumUpAPIOrdering         string = "descending"
 )

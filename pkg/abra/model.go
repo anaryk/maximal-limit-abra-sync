@@ -77,3 +77,29 @@ type FakturaPolozka struct {
 	Pocet   float64 `json:"mnozMj"`
 	CenaKus float64 `json:"cenaMj"`
 }
+
+type SaleReceiptItem struct {
+	Nazev  string  `json:"nazev,omitempty"`
+	CenaMj float64 `json:"cenaMj,omitempty"`
+	MnozMj float64 `json:"mnozMj"`
+	Cenik  string  `json:"cenik,omitempty"`
+	Kod    string  `json:"kod,omitempty"`
+	Sklad  string  `json:"sklad,omitempty"`
+}
+
+type SaleProdejka struct {
+	Mena           string            `json:"mena"`
+	TypDokl        string            `json:"typDokl"`
+	TypUcOp        string            `json:"typUcOp"`
+	PrimUcet       string            `json:"primUcet"`
+	ProtiUcet      string            `json:"protiUcet"`
+	FormaUhradyCis string            `json:"formaUhradyCis"`
+	PolozkyDokladu []SaleReceiptItem `json:"polozkyDokladu"`
+}
+
+type SaleReceipt struct {
+	Winstrom struct {
+		Version  string       `json:"@version"`
+		Prodejka SaleProdejka `json:"prodejka"`
+	} `json:"winstrom"`
+}

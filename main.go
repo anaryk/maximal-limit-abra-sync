@@ -11,13 +11,18 @@ import (
 	"github.com/anaryk/maximal-limit-abra-sync/pkg/abra"
 	"github.com/anaryk/maximal-limit-abra-sync/pkg/cron"
 	"github.com/anaryk/maximal-limit-abra-sync/pkg/db"
+	"github.com/anaryk/maximal-limit-abra-sync/pkg/sumup"
 )
 
 func main() {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if os.Getenv("DEBUG") == "true" {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
 
-	if os.Getenv("DB_MAXADMIN_HOST") == "" || os.Getenv("DB_MAXADMIN_USER") == "" || os.Getenv("DB_MAXADMIN_PASSWORD") == "" || os.Getenv("DB_MAXADMIN_NAME") == "" || os.Getenv("DB_INTERNAL_HOST") == "" || os.Getenv("DB_INTERNAL_USER") == "" || os.Getenv("DB_INTERNAL_PASSWORD") == "" || os.Getenv("DB_INTERNAL_NAME") == "" || os.Getenv("ABRA_USER") == "" || os.Getenv("ABRA_PASSWORD") == "" || os.Getenv("POSTAL_URL") == "" || os.Getenv("POSTAL_API_KEY") == "" {
-		log.Fatal().Msg("Missing environment variables for maxadmin database")
+	if os.Getenv("DB_MAXADMIN_HOST") == "" || os.Getenv("DB_MAXADMIN_USER") == "" || os.Getenv("DB_MAXADMIN_PASSWORD") == "" || os.Getenv("DB_MAXADMIN_NAME") == "" || os.Getenv("DB_INTERNAL_HOST") == "" || os.Getenv("DB_INTERNAL_USER") == "" || os.Getenv("DB_INTERNAL_PASSWORD") == "" || os.Getenv("DB_INTERNAL_NAME") == "" || os.Getenv("ABRA_USER") == "" || os.Getenv("ABRA_PASSWORD") == "" || os.Getenv("POSTAL_URL") == "" || os.Getenv("POSTAL_API_KEY") == "" || os.Getenv("SUMUP_API_TOKEN") == "" || os.Getenv("SUMUP_MERCHANT_ID") == "" {
+		log.Fatal().Msg("Missing environment variables")
 	}
 
 	if os.Getenv("ENABLE_EMAIL_CRON") == "" {
@@ -36,9 +41,14 @@ func main() {
 		log.Error().Msg(err.Error())
 	}
 
+	// Check if internal tables are populated and create them if not
 	intertnalDB.InitInternalDBIfNotExist()
+	intertnalDB.InitSumupTransactionStateTable()
+	// END table creation
 
 	abraClient := abra.NewAbraConnector(os.Getenv("ABRA_USER"), os.Getenv("ABRA_PASSWORD"))
+
+	sumClient := sumup.NewSumUpAPI(os.Getenv("SUMUP_API_TOKEN"))
 
 	//Run crons on start container
 	cron.PerformOrderInvoiceSync(maxadminDB, intertnalDB, abraClient)
@@ -47,6 +57,7 @@ func main() {
 	if os.Getenv("ENABLE_EMAIL_CRON") == "true" {
 		cron.PerformEmailSendCron(intertnalDB, abraClient, client)
 	}
+	cron.PerformSumUpSalesImport(intertnalDB, abraClient, sumClient, os.Getenv("SUMUP_MERCHANT_ID"))
 	//init cron
 	c := croner.New()
 
@@ -58,6 +69,7 @@ func main() {
 		if os.Getenv("ENABLE_EMAIL_CRON") == "true" {
 			cron.PerformEmailSendCron(intertnalDB, abraClient, client)
 		}
+		cron.PerformSumUpSalesImport(intertnalDB, abraClient, sumClient, os.Getenv("SUMUP_MERCHANT_ID"))
 	})
 	if err != nil {
 		log.Error().Msg(err.Error())
