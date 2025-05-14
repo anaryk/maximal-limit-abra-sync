@@ -20,6 +20,7 @@ func main() {
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
+	// ========================================================================================== //
 
 	if os.Getenv("DB_MAXADMIN_HOST") == "" || os.Getenv("DB_MAXADMIN_USER") == "" || os.Getenv("DB_MAXADMIN_PASSWORD") == "" || os.Getenv("DB_MAXADMIN_NAME") == "" || os.Getenv("DB_INTERNAL_HOST") == "" || os.Getenv("DB_INTERNAL_USER") == "" || os.Getenv("DB_INTERNAL_PASSWORD") == "" || os.Getenv("DB_INTERNAL_NAME") == "" || os.Getenv("ABRA_USER") == "" || os.Getenv("ABRA_PASSWORD") == "" || os.Getenv("POSTAL_URL") == "" || os.Getenv("POSTAL_API_KEY") == "" || os.Getenv("SUMUP_API_TOKEN") == "" || os.Getenv("SUMUP_MERCHANT_ID") == "" {
 		log.Fatal().Msg("Missing environment variables")
@@ -70,6 +71,14 @@ func main() {
 			cron.PerformEmailSendCron(intertnalDB, abraClient, client)
 		}
 		cron.PerformSumUpSalesImport(intertnalDB, abraClient, sumClient, os.Getenv("SUMUP_MERCHANT_ID"))
+	})
+	if err != nil {
+		log.Error().Msg(err.Error())
+	}
+
+	// Add PerformXMLFeedSync job to run every 7 days
+	_, err = c.AddFunc("@every 168h", func() {
+		cron.PerformXMLFeedSync(abraClient)
 	})
 	if err != nil {
 		log.Error().Msg(err.Error())

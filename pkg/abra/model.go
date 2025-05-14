@@ -103,3 +103,28 @@ type SaleReceipt struct {
 		Prodejka SaleProdejka `json:"prodejka"`
 	} `json:"winstrom"`
 }
+
+type Cenik struct {
+	Kod           string `json:"kod"`
+	Nazev         string `json:"nazev"`
+	Popis         string `json:"popis"`
+	EanKod        string `json:"eanKod"`
+	NakupCena     string `json:"nakupCena"`
+	CenJednotka   string `json:"cenJednotka"`
+	Skladove      string `json:"skladove"`
+	ExportNaEshop string `json:"exportNaEshop"`
+	EvidExpir     string `json:"evidExpir"`
+	ProdejKasa    string `json:"prodejKasa"`
+	SkupZboz      string `json:"skupZboz"`
+	Mj1           string `json:"mj1"`
+	Dodavatel     string `json:"dodavatel"`
+}
+
+type CenikWrapper struct {
+	Winstrom CenikWrapperWinstrom `json:"winstrom"`
+}
+
+type CenikWrapperWinstrom struct {
+	Version string  `json:"@version"`
+	Cenik   []Cenik `json:"cenik"`
+}
