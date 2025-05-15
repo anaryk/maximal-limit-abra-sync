@@ -10,7 +10,6 @@ import (
 	"github.com/anaryk/maximal-limit-abra-sync/pkg/abra"
 	"github.com/anaryk/maximal-limit-abra-sync/pkg/db"
 	"github.com/anaryk/maximal-limit-abra-sync/pkg/sumup"
-	"github.com/anaryk/maximal-limit-abra-sync/pkg/utils"
 )
 
 func PerformSumUpSalesImport(internalDB *db.Connector, abraClient *abra.Connector, sumupClient *sumup.Connector, sumUpMerchant string) {
@@ -51,22 +50,18 @@ func PerformSumUpSalesImport(internalDB *db.Connector, abraClient *abra.Connecto
 				continue
 			}
 			log.Debug().Msgf("Item: %s, Price: %f", item.Name, price)
-			if item.Description != "" {
-				eam := utils.ExtractEANCode(item.Description)
-				if eam != "" {
-					log.Debug().Msgf("EAM code found in description: %s try to import with price tables", eam)
-					items = append(items, abra.SaleReceiptItem{
-						Cenik:  fmt.Sprintf("code:%s", eam),
-						MnozMj: float64(item.Quantity),
-						Kod:    eam,
-						Sklad:  "code:SKLAD",
-					})
-					continue
-				} else {
-					log.Debug().Msgf("No EAM code found in description: %s", item.Description)
-				}
+			match := sumup.ExtractEANFromProductName(item.Name)
+			if match != "" {
+				log.Debug().Msgf("EAM code found in name: %s try to import with price tables", match)
+				items = append(items, abra.SaleReceiptItem{
+					Cenik:  fmt.Sprintf("code:%s", match),
+					MnozMj: float64(item.Quantity),
+					Kod:    match,
+					Sklad:  "code:SKLAD",
+				})
+				continue
 			}
-			log.Debug().Msgf("No description found for item: %s using non registred field", item.Name)
+			log.Debug().Msgf("No EAN found for item: %s using non registred field", item.Name)
 			items = append(items, abra.SaleReceiptItem{
 				Nazev:  item.Name,
 				MnozMj: float64(item.Quantity),
