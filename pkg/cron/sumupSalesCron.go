@@ -59,7 +59,7 @@ func PerformSumUpSalesImport(internalDB *db.Connector, abraClient *abra.Connecto
 						Cenik:  fmt.Sprintf("code:%s", eam),
 						MnozMj: float64(item.Quantity),
 						Kod:    eam,
-						Sklad:  sumup.TransformUserToWarehouseCode(transaction.User),
+						Sklad:  "code:SKLAD",
 					})
 					continue
 				} else {
