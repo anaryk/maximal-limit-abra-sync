@@ -52,7 +52,7 @@ func PerformSumUpSalesImport(internalDB *db.Connector, abraClient *abra.Connecto
 			}
 			log.Debug().Msgf("Item: %s, Price: %f", item.Name, price)
 			if item.Description != "" {
-				eam := utils.ExtractEAMCode(item.Description)
+				eam := utils.ExtractEANCode(item.Description)
 				if eam != "" {
 					log.Debug().Msgf("EAM code found in description: %s try to import with price tables", eam)
 					items = append(items, abra.SaleReceiptItem{
