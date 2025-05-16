@@ -105,6 +105,7 @@ type SaleReceipt struct {
 }
 
 type Cenik struct {
+	ID            string `json:"id"`
 	Kod           string `json:"kod"`
 	Nazev         string `json:"nazev"`
 	Popis         string `json:"popis"`
@@ -118,6 +119,9 @@ type Cenik struct {
 	SkupZboz      string `json:"skupZboz"`
 	Mj1           string `json:"mj1"`
 	Dodavatel     string `json:"dodavatel"`
+	BaseCode      string `json:"popisA"`
+	Kategorie     string `json:"popisB,omitempty"`
+	ObrazekURL    string `json:"popisC"`
 }
 
 type CenikWrapper struct {

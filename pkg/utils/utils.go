@@ -45,3 +45,15 @@ func ExtractEANCode(description string) string {
 	}
 	return ""
 }
+
+// Extract BaseCode from Nutrent item id (example VT-023-250-VI -> VT-023-250)
+func ExtractBaseCode(itemID string) string {
+	if strings.Contains(itemID, "-") {
+		start := strings.Index(itemID, "-") + len("-")
+		end := strings.Index(itemID[start:], "-")
+		if end != -1 {
+			return itemID[:start+end]
+		}
+	}
+	return ""
+}
