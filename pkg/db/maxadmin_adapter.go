@@ -20,6 +20,27 @@ func (c *Connector) QueryPayedOrdersInYear(date string) ([]Order, error) {
 	return orders, nil
 }
 
+func (c *Connector) QueryCreditOrdersInYear(date string) ([]CreditOrder, error) {
+	rows, err := c.db.Query("SELECT o.id AS order_id, o.locale_id, o.user_id, o.order_number, o.created, o.payment_type, o.total_price, o.csob_gw_id, o.payment_price, o.payment_vat, o.order_payment_status_id, o.payment_settings, o.currency_id, o.invoice_num, o.payment_received_at, o.invoice_created, o.credit_note_num, o.credit_note_created, o.order_created_email_send, coi.count FROM `order` o INNER JOIN credit_order_item coi ON o.id = coi.order_id WHERE o.payment_type = 'csob-gateway' AND o.created >= STR_TO_DATE('" + date + "', '%Y-%m-%d') AND o.payment_received_at IS NOT NULL AND o.invoice_num IS NOT NULL")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orders := []CreditOrder{}
+	for rows.Next() {
+		var order CreditOrder
+		err := rows.Scan(&order.OrderID, &order.LocaleID, &order.UserID, &order.OrderNumber, &order.Created, &order.PaymentType, &order.TotalPrice, &order.CsobGwID, &order.PaymentPrice, &order.PaymentVat, &order.OrderPaymentStatusID, &order.PaymentSettings, &order.CurrencyID, &order.InvoiceNum, &order.PaymentReceivedAt, &order.InvoiceCreated, &order.CreditNoteNum, &order.CreditNoteCreated, &order.OrderCreatedEmailSend, &order.Count)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+
+}
+
 func (c *Connector) QueryPaysChipsInYear(date string) ([]ChipOrder, error) {
 	rows, err := c.db.Query("SELECT o.id AS order_id, o.locale_id, o.user_id, o.order_number, o.created, o.payment_type, o.total_price, o.csob_gw_id, o.payment_price, o.payment_vat, o.order_payment_status_id, o.payment_settings, o.currency_id, o.invoice_num, o.payment_received_at, o.invoice_created, o.credit_note_num, o.credit_note_created, o.order_created_email_send, coi.chip_product_id, coi.price, coi.vat, coi.was_notified, coi.admins_notified, coi.can_be_dispensed, coi.dispensed_at, coi.was_notified_dispenser FROM `order` o INNER JOIN chip_order_item coi ON o.id = coi.order_id WHERE o.payment_type = 'csob-gateway' AND o.created >= STR_TO_DATE('" + date + "', '%Y-%m-%d') AND o.payment_received_at IS NOT NULL AND coi.price != 0 AND o.invoice_num IS NOT NULL")
 	if err != nil {

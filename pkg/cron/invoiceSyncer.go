@@ -191,3 +191,63 @@ func PerformChipInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient *ab
 		}
 	}
 }
+
+func PerformCreditInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient *abra.Connector) {
+	creditData, err := maxadminDB.QueryCreditOrdersInYear(utils.GetFirstDayOfActualYear())
+	if err != nil {
+		log.Err(err).Msg("Failed to query credit orders")
+		return
+	}
+	for _, credit := range creditData {
+		state, err := internalDB.QueryOrderProccesedState(credit.OrderNumber)
+		if err != nil {
+			log.Err(err).Msg("Failed to query credit state")
+			return
+		}
+		if state == internal.InternalDBStatusImported || state != "" {
+			log.Debug().Msg("Credit already imported")
+			continue
+		}
+		user, err := maxadminDB.QueryUserByID(credit.UserID)
+		if err != nil {
+			log.Err(err).Msg("Failed to query user")
+			return
+		}
+		contactExist, err := abraClient.CheckIfContactExist(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)))
+		if err != nil {
+			log.Err(err).Msg("Failed to check if contact exist")
+			return
+		}
+		if len(contactExist.Winstrom.Adresar) == 0 {
+			contact := abra.ContactData{
+				Name:       fmt.Sprintf("%s %s", user.Name, user.Surname),
+				Street:     fmt.Sprintf("%s %s", user.Street, user.HouseNumber),
+				City:       user.City,
+				PostalCode: user.ZipCode,
+				Email:      user.Email,
+				Mobile:     user.Phone,
+			}
+			_, err := abraClient.CreateContact(contact)
+			if err != nil {
+				log.Err(err).Msg("Failed to create contact")
+				return
+			}
+		}
+		items := []abra.FakturaPolozka{
+			{Popis: fmt.Sprintf("Fakturujeme vám nákup kreditů (%s) dle objednávky %s ze dne %s", fmt.Sprintf("%d", credit.Count), credit.OrderNumber, credit.Created), Pocet: 1, CenaKus: utils.CalculateTotalPriceWithVat(credit.TotalPrice, float64(credit.Vat))},
+		}
+		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.ExtractDate(credit.Created), utils.ExtractDate(credit.Created), credit.InvoiceNum, items)
+		if err != nil {
+			log.Err(err).Msg("Failed to create invoice")
+			return
+		}
+		if resp.Winstrom.Success == "true" {
+			err := internalDB.InsertOrUpdateProcessedState(credit.OrderNumber, internal.InternalDBStatusImported, user.Email, resp.Winstrom.Results[0].ID)
+			if err != nil {
+				log.Err(err).Msg("Failed to insert credit status")
+				return
+			}
+			log.Info().Msgf("Credit %s imported: %s", credit.OrderNumber, resp.Winstrom.Results)
+		}
+	}
+}

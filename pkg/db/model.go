@@ -37,6 +37,44 @@ type Order struct {
 	Capacity              int     `json:"capacity,omitempty"`
 }
 
+type CreditOrder struct {
+	OrderID               int     `json:"order_id,omitempty"`
+	ReservationID         int     `json:"reservation_id,omitempty"`
+	ID                    int     `json:"id,omitempty"`
+	LocaleID              int     `json:"locale_id,omitempty"`
+	UserID                int     `json:"user_id,omitempty"`
+	OrderNumber           string  `json:"order_number,omitempty"`
+	Created               string  `json:"created,omitempty"`
+	PaymentType           string  `json:"payment_type,omitempty"`
+	TotalPrice            float64 `json:"total_price,omitempty"`
+	CsobGwID              string  `json:"csob_gw_id,omitempty"`
+	PaymentPrice          float64 `json:"payment_price,omitempty"`
+	PaymentVat            int     `json:"payment_vat,omitempty"`
+	OrderPaymentStatusID  int     `json:"order_payment_status_id,omitempty"`
+	PaymentSettings       string  `json:"payment_settings,omitempty"`
+	CurrencyID            int     `json:"currency_id,omitempty"`
+	InvoiceNum            string  `json:"invoice_num,omitempty"`
+	PaymentReceivedAt     string  `json:"payment_received_at,omitempty"`
+	InvoiceCreated        string  `json:"invoice_created,omitempty"`
+	CreditNoteNum         any     `json:"credit_note_num,omitempty"`
+	CreditNoteCreated     any     `json:"credit_note_created,omitempty"`
+	OrderCreatedEmailSend int     `json:"order_created_email_send,omitempty"`
+	ServiceID             int     `json:"service_id,omitempty"`
+	Start                 string  `json:"start,omitempty"`
+	End                   string  `json:"end,omitempty"`
+	Options               string  `json:"options,omitempty"`
+	CanceledByID          any     `json:"canceled_by_id,omitempty"`
+	Canceled              int     `json:"canceled,omitempty"`
+	CancelReason          any     `json:"cancel_reason,omitempty"`
+	PlaceID               int     `json:"place_id,omitempty"`
+	Note                  any     `json:"note,omitempty"`
+	Vat                   int     `json:"vat,omitempty"`
+	Price                 float64 `json:"price,omitempty"`
+	GoogleID              any     `json:"google_id,omitempty"`
+	Capacity              int     `json:"capacity,omitempty"`
+	Count                 int     `json:"count,omitempty"`
+}
+
 type User struct {
 	ID                  int    `json:"id,omitempty"`
 	Name                string `json:"name,omitempty"`

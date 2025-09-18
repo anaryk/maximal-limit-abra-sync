@@ -52,6 +52,7 @@ func main() {
 	cron.PerformOrderInvoiceSync(maxadminDB, intertnalDB, abraClient)
 	cron.PerformTicketsInvoiceSync(maxadminDB, intertnalDB, abraClient)
 	cron.PerformChipInvoiceSync(maxadminDB, intertnalDB, abraClient)
+	cron.PerformCreditInvoiceSync(maxadminDB, intertnalDB, abraClient)
 	if os.Getenv("ENABLE_EMAIL_CRON") == "true" {
 		cron.PerformEmailSendCron(intertnalDB, abraClient, client)
 	}
@@ -63,6 +64,7 @@ func main() {
 		cron.PerformOrderInvoiceSync(maxadminDB, intertnalDB, abraClient)
 		cron.PerformTicketsInvoiceSync(maxadminDB, intertnalDB, abraClient)
 		cron.PerformChipInvoiceSync(maxadminDB, intertnalDB, abraClient)
+		cron.PerformCreditInvoiceSync(maxadminDB, intertnalDB, abraClient)
 		if os.Getenv("ENABLE_EMAIL_CRON") == "true" {
 			cron.PerformEmailSendCron(intertnalDB, abraClient, client)
 		}
