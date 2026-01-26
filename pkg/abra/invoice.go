@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/anaryk/maximal-limit-abra-sync/pkg/internal"
 )
@@ -208,4 +209,162 @@ func (c *Connector) GetPDFInvoiceAsBase64(invoiceID string) (string, error) {
 	}
 
 	return b64.StdEncoding.EncodeToString([]byte(body)), nil
+}
+
+// InvoiceItemResponse represents the response when fetching invoice items
+type InvoiceItemResponse struct {
+	Winstrom struct {
+		FakturaVydanaPolozka []struct {
+			ID       string `json:"id"`
+			Nazev    string `json:"nazev"`
+			SumCelkem string `json:"sumCelkem"`
+		} `json:"faktura-vydana-polozka"`
+	} `json:"winstrom"`
+}
+
+// GetInvoiceVoucherItems returns IDs of voucher discount items on an invoice
+func (c *Connector) GetInvoiceVoucherItems(invoiceCode string) ([]string, error) {
+	url := fmt.Sprintf("%s/c/%s/faktura-vydana/code:%s.json?detail=full", internal.AbraBaseURL, internal.AbraCompany, invoiceCode)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	type InvoiceDetailResponse struct {
+		Winstrom struct {
+			FakturaVydana []struct {
+				PolozkyFaktury []struct {
+					ID    string `json:"id"`
+					Nazev string `json:"nazev"`
+				} `json:"polozkyFaktury"`
+			} `json:"faktura-vydana"`
+		} `json:"winstrom"`
+	}
+
+	var invoiceResp InvoiceDetailResponse
+	if err := json.Unmarshal(body, &invoiceResp); err != nil {
+		return nil, fmt.Errorf("failed to parse invoice response: %w", err)
+	}
+
+	var voucherItemIDs []string
+	if len(invoiceResp.Winstrom.FakturaVydana) > 0 {
+		for _, item := range invoiceResp.Winstrom.FakturaVydana[0].PolozkyFaktury {
+			if strings.Contains(item.Nazev, "Slevový poukaz") {
+				voucherItemIDs = append(voucherItemIDs, item.ID)
+			}
+		}
+	}
+
+	return voucherItemIDs, nil
+}
+
+// HasVoucherItem checks if an invoice already has a voucher discount item
+func (c *Connector) HasVoucherItem(invoiceCode string) (bool, error) {
+	items, err := c.GetInvoiceVoucherItems(invoiceCode)
+	if err != nil {
+		return false, err
+	}
+	return len(items) > 0, nil
+}
+
+// RemoveInvoiceItem removes an item from an invoice by item ID using @action delete
+func (c *Connector) RemoveInvoiceItem(invoiceCode string, itemID string) error {
+	// Step 1: Set invoice to unpaid
+	if err := c.setInvoicePaymentStatus(invoiceCode, ""); err != nil {
+		return fmt.Errorf("failed to set invoice to unpaid: %w", err)
+	}
+
+	// Step 2: Delete the item using PUT with @action: delete
+	type DeleteItemRequest struct {
+		Winstrom struct {
+			FakturaVydana struct {
+				PolozkyFaktury []struct {
+					ID     string `json:"id"`
+					Action string `json:"@action"`
+				} `json:"polozkyFaktury"`
+			} `json:"faktura-vydana"`
+		} `json:"winstrom"`
+	}
+
+	request := DeleteItemRequest{}
+	request.Winstrom.FakturaVydana.PolozkyFaktury = []struct {
+		ID     string `json:"id"`
+		Action string `json:"@action"`
+	}{
+		{ID: itemID, Action: "delete"},
+	}
+
+	payload, err := json.Marshal(request)
+	if err != nil {
+		_ = c.setInvoicePaymentStatus(invoiceCode, "stavUhr.uhrazenoRucne")
+		return err
+	}
+
+	url := fmt.Sprintf("%s/c/%s/faktura-vydana/code:%s.json", internal.AbraBaseURL, internal.AbraCompany, invoiceCode)
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(payload))
+	if err != nil {
+		_ = c.setInvoicePaymentStatus(invoiceCode, "stavUhr.uhrazenoRucne")
+		return err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		_ = c.setInvoicePaymentStatus(invoiceCode, "stavUhr.uhrazenoRucne")
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("RemoveInvoiceItem response (HTTP %d): %s\n", resp.StatusCode, string(body))
+
+	// Step 3: Set invoice back to paid
+	if err := c.setInvoicePaymentStatus(invoiceCode, "stavUhr.uhrazenoRucne"); err != nil {
+		fmt.Printf("Warning: Failed to set invoice back to paid: %v\n", err)
+	}
+
+	var apiResponse APIResponse
+	if err := json.Unmarshal(body, &apiResponse); err != nil {
+		return fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if apiResponse.Winstrom.Success != "true" {
+		return fmt.Errorf("failed to delete item: %v", apiResponse.Winstrom.Results)
+	}
+
+	return nil
+}
+
+// RemoveDuplicateVoucherItems removes all but one voucher item from an invoice
+func (c *Connector) RemoveDuplicateVoucherItems(invoiceCode string) (int, error) {
+	items, err := c.GetInvoiceVoucherItems(invoiceCode)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(items) <= 1 {
+		return 0, nil // No duplicates
+	}
+
+	// Keep the first one, remove the rest
+	removedCount := 0
+	for i := 1; i < len(items); i++ {
+		if err := c.RemoveInvoiceItem(invoiceCode, items[i]); err != nil {
+			fmt.Printf("Warning: Failed to remove duplicate item %s: %v\n", items[i], err)
+			continue
+		}
+		removedCount++
+	}
+
+	return removedCount, nil
 }

@@ -2,6 +2,8 @@ package cron
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -18,8 +20,11 @@ func RepairTicketInvoicesWithMissingVouchers(maxadminDB, internalDB *db.Connecto
 		return
 	}
 
+	currentYear := fmt.Sprintf("%d", time.Now().Year())
 	repairedCount := 0
+	duplicatesRemovedCount := 0
 	skippedCount := 0
+	alreadyHasVoucherCount := 0
 
 	for _, order := range importedOrders {
 		ticket, err := maxadminDB.QueryTicketByOrderNumber(order.OrderNumber)
@@ -29,6 +34,34 @@ func RepairTicketInvoicesWithMissingVouchers(maxadminDB, internalDB *db.Connecto
 		}
 		if ticket == nil {
 			skippedCount++
+			continue
+		}
+
+		// Filter only current year invoices (invoice codes like P2025xxxx or P2026xxxx)
+		if !strings.Contains(ticket.InvoiceNum, currentYear) {
+			skippedCount++
+			continue
+		}
+
+		// First, remove any duplicate voucher items
+		removed, err := abraClient.RemoveDuplicateVoucherItems(ticket.InvoiceNum)
+		if err != nil {
+			log.Err(err).Msgf("Failed to remove duplicates from invoice %s", ticket.InvoiceNum)
+		}
+		if removed > 0 {
+			duplicatesRemovedCount += removed
+			log.Info().Msgf("Removed %d duplicate voucher items from invoice %s", removed, ticket.InvoiceNum)
+		}
+
+		// Check if invoice already has a voucher item
+		hasVoucher, err := abraClient.HasVoucherItem(ticket.InvoiceNum)
+		if err != nil {
+			log.Err(err).Msgf("Failed to check voucher items for invoice %s", ticket.InvoiceNum)
+			continue
+		}
+		if hasVoucher {
+			alreadyHasVoucherCount++
+			log.Debug().Msgf("Invoice %s already has voucher item, skipping", ticket.InvoiceNum)
 			continue
 		}
 
@@ -62,7 +95,7 @@ func RepairTicketInvoicesWithMissingVouchers(maxadminDB, internalDB *db.Connecto
 		}
 	}
 
-	log.Info().Msgf("Invoice repair completed: %d repaired, %d skipped (no ticket or voucher)", repairedCount, skippedCount)
+	log.Info().Msgf("Invoice repair completed: %d repaired, %d duplicates removed, %d already had voucher, %d skipped", repairedCount, duplicatesRemovedCount, alreadyHasVoucherCount, skippedCount)
 }
 
 func PerformOrderInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient *abra.Connector) {
