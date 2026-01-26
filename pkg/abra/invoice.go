@@ -265,9 +265,9 @@ func (c *Connector) GetInvoiceVoucherItemsWithAmount(invoiceCode string) ([]Vouc
 		Winstrom struct {
 			FakturaVydana []struct {
 				PolozkyFaktury []struct {
-					ID        string  `json:"id"`
-					Nazev     string  `json:"nazev"`
-					SumCelkem float64 `json:"sumCelkem"`
+					ID        string `json:"id"`
+					Nazev     string `json:"nazev"`
+					SumCelkem string `json:"sumCelkem"`
 				} `json:"polozkyFaktury"`
 			} `json:"faktura-vydana"`
 		} `json:"winstrom"`
@@ -282,10 +282,14 @@ func (c *Connector) GetInvoiceVoucherItemsWithAmount(invoiceCode string) ([]Vouc
 	if len(invoiceResp.Winstrom.FakturaVydana) > 0 {
 		for _, item := range invoiceResp.Winstrom.FakturaVydana[0].PolozkyFaktury {
 			if strings.Contains(item.Nazev, "Slevový poukaz") {
+				amount := 0.0
+				if item.SumCelkem != "" {
+					fmt.Sscanf(item.SumCelkem, "%f", &amount)
+				}
 				voucherItems = append(voucherItems, VoucherItemInfo{
 					ID:     item.ID,
 					Nazev:  item.Nazev,
-					Amount: item.SumCelkem,
+					Amount: amount,
 				})
 			}
 		}
