@@ -49,6 +49,26 @@ func (c *Connector) InsertOrUpdateProcessedState(orderNumber string, status stri
 	return c.UpdateOrderProccesedState(orderNumber, status)
 }
 
+func (c *Connector) QueryAllImportedOrders() ([]OrderInternalState, error) {
+	rows, err := c.db.Query("SELECT order_number, status, email, invoice_id FROM `abra_sync_order_state` WHERE status = 'imported'")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orders := []OrderInternalState{}
+	for rows.Next() {
+		var order OrderInternalState
+		err := rows.Scan(&order.OrderNumber, &order.Status, &order.Email, &order.InvoiceID)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+
 func (c *Connector) QueryUnsendOrders() ([]OrderInternalState, error) {
 	rows, err := c.db.Query("SELECT order_number, status, email, invoice_id FROM `abra_sync_order_state` WHERE email_sent = false")
 	if err != nil {

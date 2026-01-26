@@ -181,3 +181,12 @@ type SumupTransactionState struct {
 	TransactionID string
 	Imported      bool
 }
+
+type VoucherOrderItem struct {
+	ID          int     `json:"id,omitempty"`
+	VoucherID   int     `json:"voucher_id,omitempty"`
+	OrderID     int     `json:"order_id,omitempty"`
+	Price       float64 `json:"price,omitempty"`
+	Vat         int     `json:"vat,omitempty"`
+	VoucherCode string  `json:"voucher_code,omitempty"`
+}

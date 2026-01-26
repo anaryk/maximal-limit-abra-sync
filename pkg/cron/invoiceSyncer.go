@@ -11,6 +11,60 @@ import (
 	"github.com/anaryk/maximal-limit-abra-sync/pkg/utils"
 )
 
+func RepairTicketInvoicesWithMissingVouchers(maxadminDB, internalDB *db.Connector, abraClient *abra.Connector) {
+	importedOrders, err := internalDB.QueryAllImportedOrders()
+	if err != nil {
+		log.Err(err).Msg("Failed to query imported orders")
+		return
+	}
+
+	repairedCount := 0
+	skippedCount := 0
+
+	for _, order := range importedOrders {
+		ticket, err := maxadminDB.QueryTicketByOrderNumber(order.OrderNumber)
+		if err != nil {
+			log.Err(err).Msgf("Failed to query ticket for order %s", order.OrderNumber)
+			continue
+		}
+		if ticket == nil {
+			skippedCount++
+			continue
+		}
+
+		voucher, err := maxadminDB.QueryVoucherByOrderID(ticket.OrderID)
+		if err != nil {
+			log.Err(err).Msgf("Failed to query voucher for order %s", order.OrderNumber)
+			continue
+		}
+		if voucher == nil {
+			skippedCount++
+			continue
+		}
+
+		item := abra.FakturaPolozka{
+			Popis:   fmt.Sprintf("Slevový poukaz %s", voucher.VoucherCode),
+			Pocet:   1,
+			CenaKus: utils.CalculateTotalPriceWithVat(voucher.Price, float64(voucher.Vat)),
+		}
+
+		resp, err := abraClient.AddInvoiceItem(ticket.InvoiceNum, item)
+		if err != nil {
+			log.Err(err).Msgf("Failed to add voucher item to invoice %s", ticket.InvoiceNum)
+			continue
+		}
+
+		if resp.Winstrom.Success == "true" {
+			repairedCount++
+			log.Info().Msgf("Repaired invoice %s with voucher %s (discount: %.2f)", ticket.InvoiceNum, voucher.VoucherCode, voucher.Price)
+		} else {
+			log.Warn().Msgf("Failed to repair invoice %s: %v", ticket.InvoiceNum, resp.Winstrom.Results)
+		}
+	}
+
+	log.Info().Msgf("Invoice repair completed: %d repaired, %d skipped (no ticket or voucher)", repairedCount, skippedCount)
+}
+
 func PerformOrderInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient *abra.Connector) {
 	orderData, err := maxadminDB.QueryPayedOrdersInYear(utils.GetFirstDayOfActualYear())
 	if err != nil {
@@ -115,6 +169,20 @@ func PerformTicketsInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient 
 		items := []abra.FakturaPolozka{
 			{Popis: fmt.Sprintf("Fakturujeme vám permanentku %s ze dne %s", ticket.OrderNumber, ticket.Created), Pocet: 1, CenaKus: utils.CalculateTotalPriceWithVat(ticket.TotalPrice, float64(ticket.Vat))},
 		}
+
+		voucher, err := maxadminDB.QueryVoucherByOrderID(ticket.OrderID)
+		if err != nil {
+			log.Err(err).Msg("Failed to query voucher")
+			return
+		}
+		if voucher != nil {
+			items = append(items, abra.FakturaPolozka{
+				Popis:   fmt.Sprintf("Slevový poukaz %s", voucher.VoucherCode),
+				Pocet:   1,
+				CenaKus: utils.CalculateTotalPriceWithVat(voucher.Price, float64(voucher.Vat)),
+			})
+		}
+
 		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.ExtractDate(ticket.Created), utils.ExtractDate(ticket.Created), ticket.InvoiceNum, items)
 		if err != nil {
 			log.Err(err).Msg("Failed to create invoice")

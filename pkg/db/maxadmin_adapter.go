@@ -81,6 +81,34 @@ func (c *Connector) QueryPayedTicketsInYear(date string) ([]Ticket, error) {
 	return tickets, nil
 }
 
+func (c *Connector) QueryTicketByOrderNumber(orderNumber string) (*Ticket, error) {
+	row := c.db.QueryRow("SELECT t.id AS ticket_id, t.price, t.order_id, t.vat, t.is_renew, t.validity_already_extended, o.locale_id, o.user_id, o.order_number, o.created, o.payment_type, o.total_price, o.csob_gw_id, o.payment_price, o.payment_vat, o.order_payment_status_id, o.payment_settings, o.currency_id, o.invoice_num, o.payment_received_at, o.invoice_created, o.credit_note_num, o.credit_note_created, o.order_created_email_send FROM ticket_order_item t RIGHT JOIN `order` o ON o.id = t.order_id WHERE o.order_number = ? AND t.id IS NOT NULL", orderNumber)
+
+	var ticket Ticket
+	err := row.Scan(&ticket.ID, &ticket.Price, &ticket.OrderID, &ticket.Vat, &ticket.IsRenew, &ticket.ValidityAlreadyExtended, &ticket.LocaleID, &ticket.UserID, &ticket.OrderNumber, &ticket.Created, &ticket.PaymentType, &ticket.TotalPrice, &ticket.CsobGwID, &ticket.PaymentPrice, &ticket.PaymentVat, &ticket.OrderPaymentStatusID, &ticket.PaymentSettings, &ticket.CurrencyID, &ticket.InvoiceNum, &ticket.PaymentReceivedAt, &ticket.InvoiceCreated, &ticket.CreditNoteNum, &ticket.CreditNoteCreated, &ticket.OrderCreatedEmailSend)
+	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &ticket, nil
+}
+
+func (c *Connector) QueryVoucherByOrderID(orderID int) (*VoucherOrderItem, error) {
+	row := c.db.QueryRow("SELECT voi.id, voi.voucher_id, voi.order_id, voi.price, voi.vat, v.code FROM voucher_order_item voi INNER JOIN voucher v ON v.id = voi.voucher_id WHERE voi.order_id = ?", orderID)
+
+	var voucher VoucherOrderItem
+	err := row.Scan(&voucher.ID, &voucher.VoucherID, &voucher.OrderID, &voucher.Price, &voucher.Vat, &voucher.VoucherCode)
+	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &voucher, nil
+}
+
 func (c *Connector) QueryUserByID(id int) (*User, error) {
 	rows, err := c.db.Query("SELECT u.id AS user_id, u.name AS user_name, u.email, u.password, u.position, u.phone, u.admin, u.token, u.token_expiration, u.date_of_birth, u.note, u.surname, u.image, u.tin, u.vat_id, u.notification_timeout, u.unsubscribe_email, u.unsubscribe_sms, u.notification_allowed, u.last_phone_contact, u.vip, u.sauna_boda, ua.id AS address_id, ua.user_id AS address_user_id, ua.company, ua.name AS address_name, ua.street, ua.house_number, ua.city, ua.zip_code, ua.region, ua.country, ua.type FROM user u LEFT JOIN user_address ua ON u.id = ua.user_id WHERE u.id = ?", id)
 	if err != nil {

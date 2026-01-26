@@ -67,6 +67,64 @@ func (c *Connector) CreateInvoice(customerCode, issueDate, dueDate string, inter
 	return &apiResponse, nil
 }
 
+func (c *Connector) AddInvoiceItem(invoiceID string, item FakturaPolozka) (*APIResponse, error) {
+	type ItemRequest struct {
+		Winstrom struct {
+			FakturaVydanaPolozka []struct {
+				Nazev  string  `json:"nazev"`
+				MnozMj float64 `json:"mnozMj"`
+				CenaMj float64 `json:"cenaMj"`
+				Doklad string  `json:"doklad"`
+			} `json:"faktura-vydana-polozka"`
+		} `json:"winstrom"`
+	}
+
+	request := ItemRequest{}
+	request.Winstrom.FakturaVydanaPolozka = []struct {
+		Nazev  string  `json:"nazev"`
+		MnozMj float64 `json:"mnozMj"`
+		CenaMj float64 `json:"cenaMj"`
+		Doklad string  `json:"doklad"`
+	}{
+		{
+			Nazev:  item.Popis,
+			MnozMj: item.Pocet,
+			CenaMj: item.CenaKus,
+			Doklad: fmt.Sprintf("code:%s", invoiceID),
+		},
+	}
+
+	payload, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/c/%s/faktura-vydana-polozka.json", internal.AbraBaseURL, internal.AbraCompany)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var apiResponse APIResponse
+	err = json.Unmarshal(body, &apiResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return &apiResponse, nil
+}
+
 func (c *Connector) GetPDFInvoiceAsBase64(invoiceID string) (string, error) {
 	url := fmt.Sprintf("%s/c/%s/faktura-vydana/%s.pdf?report-name=fakturaConfig", internal.AbraBaseURL, internal.AbraCompany, invoiceID)
 	req, err := http.NewRequest("GET", url, nil)

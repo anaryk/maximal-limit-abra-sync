@@ -48,6 +48,14 @@ func main() {
 
 	abraClient := abra.NewAbraConnector(os.Getenv("ABRA_USER"), os.Getenv("ABRA_PASSWORD"))
 
+	// One-time repair of invoices with missing voucher discounts
+	if os.Getenv("REPAIR_INVOICES") == "true" {
+		log.Info().Msg("Starting one-time invoice repair for missing voucher discounts...")
+		cron.RepairTicketInvoicesWithMissingVouchers(maxadminDB, intertnalDB, abraClient)
+		log.Info().Msg("Invoice repair completed. Exiting.")
+		return
+	}
+
 	//Run crons on start container
 	cron.PerformOrderInvoiceSync(maxadminDB, intertnalDB, abraClient)
 	cron.PerformTicketsInvoiceSync(maxadminDB, intertnalDB, abraClient)
