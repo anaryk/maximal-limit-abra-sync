@@ -68,29 +68,36 @@ func (c *Connector) CreateInvoice(customerCode, issueDate, dueDate string, inter
 }
 
 func (c *Connector) AddInvoiceItem(invoiceID string, item FakturaPolozka) (*APIResponse, error) {
-	type ItemRequest struct {
+	// Step 1: Set invoice to unpaid state (required to modify paid invoices)
+	// Use empty string to remove payment status
+	_ = c.setInvoicePaymentStatus(invoiceID, "")
+
+	// Step 2: Add the item using PUT on the invoice
+	type ItemAddRequest struct {
 		Winstrom struct {
-			FakturaVydanaPolozka []struct {
-				Nazev   string  `json:"nazev"`
-				MnozMj  float64 `json:"mnozMj"`
-				CenaMj  float64 `json:"cenaMj"`
-				DoklFak string  `json:"doklFak"`
-			} `json:"faktura-vydana-polozka"`
+			FakturaVydana struct {
+				PolozkyFaktury []struct {
+					Nazev        string  `json:"nazev"`
+					MnozMj       float64 `json:"mnozMj"`
+					CenaMj       float64 `json:"cenaMj"`
+					TypCenyDphK  string  `json:"typCenyDphK"`
+				} `json:"polozkyFaktury"`
+			} `json:"faktura-vydana"`
 		} `json:"winstrom"`
 	}
 
-	request := ItemRequest{}
-	request.Winstrom.FakturaVydanaPolozka = []struct {
-		Nazev   string  `json:"nazev"`
-		MnozMj  float64 `json:"mnozMj"`
-		CenaMj  float64 `json:"cenaMj"`
-		DoklFak string  `json:"doklFak"`
+	request := ItemAddRequest{}
+	request.Winstrom.FakturaVydana.PolozkyFaktury = []struct {
+		Nazev        string  `json:"nazev"`
+		MnozMj       float64 `json:"mnozMj"`
+		CenaMj       float64 `json:"cenaMj"`
+		TypCenyDphK  string  `json:"typCenyDphK"`
 	}{
 		{
-			Nazev:   item.Popis,
-			MnozMj:  item.Pocet,
-			CenaMj:  item.CenaKus,
-			DoklFak: fmt.Sprintf("code:%s", invoiceID),
+			Nazev:        item.Popis,
+			MnozMj:       item.Pocet,
+			CenaMj:       item.CenaKus,
+			TypCenyDphK:  "typCeny.sDph",
 		},
 	}
 
@@ -99,8 +106,8 @@ func (c *Connector) AddInvoiceItem(invoiceID string, item FakturaPolozka) (*APIR
 		return nil, err
 	}
 
-	url := fmt.Sprintf("%s/c/%s/faktura-vydana-polozka.json", internal.AbraBaseURL, internal.AbraCompany)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	url := fmt.Sprintf("%s/c/%s/faktura-vydana/code:%s.json", internal.AbraBaseURL, internal.AbraCompany, invoiceID)
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(payload))
 	if err != nil {
 		return nil, err
 	}
@@ -116,16 +123,55 @@ func (c *Connector) AddInvoiceItem(invoiceID string, item FakturaPolozka) (*APIR
 		return nil, err
 	}
 
-	// Log raw response for debugging
-	fmt.Printf("AddInvoiceItem response (HTTP %d): %s\n", resp.StatusCode, string(body))
-
 	var apiResponse APIResponse
 	err = json.Unmarshal(body, &apiResponse)
 	if err != nil {
+		// Try to restore paid status even if unmarshaling failed
+		_ = c.setInvoicePaymentStatus(invoiceID, "stavUhr.uhrazenoRucne")
 		return nil, fmt.Errorf("failed to unmarshal response: %w, body: %s", err, string(body))
 	}
 
+	// Step 3: Set invoice back to paid state
+	_ = c.setInvoicePaymentStatus(invoiceID, "stavUhr.uhrazenoRucne")
+
 	return &apiResponse, nil
+}
+
+func (c *Connector) setInvoicePaymentStatus(invoiceID string, status string) error {
+	type StatusRequest struct {
+		Winstrom struct {
+			FakturaVydana struct {
+				StavUhrK string `json:"stavUhrK"`
+			} `json:"faktura-vydana"`
+		} `json:"winstrom"`
+	}
+
+	request := StatusRequest{}
+	request.Winstrom.FakturaVydana.StavUhrK = status
+
+	payload, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	url := fmt.Sprintf("%s/c/%s/faktura-vydana/code:%s.json", internal.AbraBaseURL, internal.AbraCompany, invoiceID)
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(payload))
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed to update invoice status (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }
 
 func (c *Connector) GetPDFInvoiceAsBase64(invoiceID string) (string, error) {
