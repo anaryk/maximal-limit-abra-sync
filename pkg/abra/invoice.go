@@ -71,26 +71,26 @@ func (c *Connector) AddInvoiceItem(invoiceID string, item FakturaPolozka) (*APIR
 	type ItemRequest struct {
 		Winstrom struct {
 			FakturaVydanaPolozka []struct {
-				Nazev  string  `json:"nazev"`
-				MnozMj float64 `json:"mnozMj"`
-				CenaMj float64 `json:"cenaMj"`
-				Doklad string  `json:"doklad"`
+				Nazev   string  `json:"nazev"`
+				MnozMj  float64 `json:"mnozMj"`
+				CenaMj  float64 `json:"cenaMj"`
+				DoklFak string  `json:"doklFak"`
 			} `json:"faktura-vydana-polozka"`
 		} `json:"winstrom"`
 	}
 
 	request := ItemRequest{}
 	request.Winstrom.FakturaVydanaPolozka = []struct {
-		Nazev  string  `json:"nazev"`
-		MnozMj float64 `json:"mnozMj"`
-		CenaMj float64 `json:"cenaMj"`
-		Doklad string  `json:"doklad"`
+		Nazev   string  `json:"nazev"`
+		MnozMj  float64 `json:"mnozMj"`
+		CenaMj  float64 `json:"cenaMj"`
+		DoklFak string  `json:"doklFak"`
 	}{
 		{
-			Nazev:  item.Popis,
-			MnozMj: item.Pocet,
-			CenaMj: item.CenaKus,
-			Doklad: fmt.Sprintf("code:%s", invoiceID),
+			Nazev:   item.Popis,
+			MnozMj:  item.Pocet,
+			CenaMj:  item.CenaKus,
+			DoklFak: fmt.Sprintf("code:%s", invoiceID),
 		},
 	}
 
@@ -116,10 +116,13 @@ func (c *Connector) AddInvoiceItem(invoiceID string, item FakturaPolozka) (*APIR
 		return nil, err
 	}
 
+	// Log raw response for debugging
+	fmt.Printf("AddInvoiceItem response (HTTP %d): %s\n", resp.StatusCode, string(body))
+
 	var apiResponse APIResponse
 	err = json.Unmarshal(body, &apiResponse)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal response: %w, body: %s", err, string(body))
 	}
 
 	return &apiResponse, nil
