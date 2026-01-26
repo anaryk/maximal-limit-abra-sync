@@ -72,7 +72,7 @@ type CreditOrder struct {
 	Price                 float64 `json:"price,omitempty"`
 	GoogleID              any     `json:"google_id,omitempty"`
 	Capacity              int     `json:"capacity,omitempty"`
-	Count                 int     `json:"count,omitempty"`
+	Count                 float64 `json:"count,omitempty"`
 }
 
 type User struct {

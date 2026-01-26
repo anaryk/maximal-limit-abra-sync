@@ -222,8 +222,28 @@ type InvoiceItemResponse struct {
 	} `json:"winstrom"`
 }
 
+// VoucherItemInfo contains info about a voucher item on an invoice
+type VoucherItemInfo struct {
+	ID     string
+	Nazev  string
+	Amount float64
+}
+
 // GetInvoiceVoucherItems returns IDs of voucher discount items on an invoice
 func (c *Connector) GetInvoiceVoucherItems(invoiceCode string) ([]string, error) {
+	items, err := c.GetInvoiceVoucherItemsWithAmount(invoiceCode)
+	if err != nil {
+		return nil, err
+	}
+	var ids []string
+	for _, item := range items {
+		ids = append(ids, item.ID)
+	}
+	return ids, nil
+}
+
+// GetInvoiceVoucherItemsWithAmount returns voucher items with their amounts
+func (c *Connector) GetInvoiceVoucherItemsWithAmount(invoiceCode string) ([]VoucherItemInfo, error) {
 	url := fmt.Sprintf("%s/c/%s/faktura-vydana/code:%s.json?detail=full", internal.AbraBaseURL, internal.AbraCompany, invoiceCode)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -245,8 +265,9 @@ func (c *Connector) GetInvoiceVoucherItems(invoiceCode string) ([]string, error)
 		Winstrom struct {
 			FakturaVydana []struct {
 				PolozkyFaktury []struct {
-					ID    string `json:"id"`
-					Nazev string `json:"nazev"`
+					ID        string  `json:"id"`
+					Nazev     string  `json:"nazev"`
+					SumCelkem float64 `json:"sumCelkem"`
 				} `json:"polozkyFaktury"`
 			} `json:"faktura-vydana"`
 		} `json:"winstrom"`
@@ -257,16 +278,20 @@ func (c *Connector) GetInvoiceVoucherItems(invoiceCode string) ([]string, error)
 		return nil, fmt.Errorf("failed to parse invoice response: %w", err)
 	}
 
-	var voucherItemIDs []string
+	var voucherItems []VoucherItemInfo
 	if len(invoiceResp.Winstrom.FakturaVydana) > 0 {
 		for _, item := range invoiceResp.Winstrom.FakturaVydana[0].PolozkyFaktury {
 			if strings.Contains(item.Nazev, "Slevový poukaz") {
-				voucherItemIDs = append(voucherItemIDs, item.ID)
+				voucherItems = append(voucherItems, VoucherItemInfo{
+					ID:     item.ID,
+					Nazev:  item.Nazev,
+					Amount: item.SumCelkem,
+				})
 			}
 		}
 	}
 
-	return voucherItemIDs, nil
+	return voucherItems, nil
 }
 
 // HasVoucherItem checks if an invoice already has a voucher discount item

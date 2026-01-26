@@ -21,10 +21,10 @@ func RepairTicketInvoicesWithMissingVouchers(maxadminDB, internalDB *db.Connecto
 	}
 
 	currentYear := fmt.Sprintf("%d", time.Now().Year())
-	repairedCount := 0
-	duplicatesRemovedCount := 0
+	addedCount := 0
+	fixedCount := 0
+	correctCount := 0
 	skippedCount := 0
-	alreadyHasVoucherCount := 0
 
 	for _, order := range importedOrders {
 		ticket, err := maxadminDB.QueryTicketByOrderNumber(order.OrderNumber)
@@ -43,28 +43,7 @@ func RepairTicketInvoicesWithMissingVouchers(maxadminDB, internalDB *db.Connecto
 			continue
 		}
 
-		// First, remove any duplicate voucher items
-		removed, err := abraClient.RemoveDuplicateVoucherItems(ticket.InvoiceNum)
-		if err != nil {
-			log.Err(err).Msgf("Failed to remove duplicates from invoice %s", ticket.InvoiceNum)
-		}
-		if removed > 0 {
-			duplicatesRemovedCount += removed
-			log.Info().Msgf("Removed %d duplicate voucher items from invoice %s", removed, ticket.InvoiceNum)
-		}
-
-		// Check if invoice already has a voucher item
-		hasVoucher, err := abraClient.HasVoucherItem(ticket.InvoiceNum)
-		if err != nil {
-			log.Err(err).Msgf("Failed to check voucher items for invoice %s", ticket.InvoiceNum)
-			continue
-		}
-		if hasVoucher {
-			alreadyHasVoucherCount++
-			log.Debug().Msgf("Invoice %s already has voucher item, skipping", ticket.InvoiceNum)
-			continue
-		}
-
+		// Check if this order has a voucher in the database
 		voucher, err := maxadminDB.QueryVoucherByOrderID(ticket.OrderID)
 		if err != nil {
 			log.Err(err).Msgf("Failed to query voucher for order %s", order.OrderNumber)
@@ -75,27 +54,74 @@ func RepairTicketInvoicesWithMissingVouchers(maxadminDB, internalDB *db.Connecto
 			continue
 		}
 
+		// Calculate the correct voucher amount
+		correctAmount := utils.CalculateTotalPriceWithVat(voucher.Price, float64(voucher.Vat))
+
+		// Get existing voucher items on the invoice with their amounts
+		existingVoucherItems, err := abraClient.GetInvoiceVoucherItemsWithAmount(ticket.InvoiceNum)
+		if err != nil {
+			log.Err(err).Msgf("Failed to check voucher items for invoice %s", ticket.InvoiceNum)
+			continue
+		}
+
+		// Case 1: No voucher item - need to add
+		if len(existingVoucherItems) == 0 {
+			item := abra.FakturaPolozka{
+				Popis:   fmt.Sprintf("Slevový poukaz %s", voucher.VoucherCode),
+				Pocet:   1,
+				CenaKus: correctAmount,
+			}
+			resp, err := abraClient.AddInvoiceItem(ticket.InvoiceNum, item)
+			if err != nil {
+				log.Err(err).Msgf("Failed to add voucher item to invoice %s", ticket.InvoiceNum)
+				continue
+			}
+			if resp.Winstrom.Success == "true" {
+				addedCount++
+				log.Info().Msgf("Added missing voucher to invoice %s (discount: %.2f)", ticket.InvoiceNum, correctAmount)
+			}
+			continue
+		}
+
+		// Case 2: Exactly one voucher item - check if amount is correct
+		if len(existingVoucherItems) == 1 {
+			currentAmount := existingVoucherItems[0].Amount
+			if currentAmount == correctAmount {
+				correctCount++
+				log.Debug().Msgf("Invoice %s has correct voucher amount %.2f", ticket.InvoiceNum, correctAmount)
+				continue
+			}
+			// Amount is wrong - remove and re-add
+			log.Info().Msgf("Invoice %s has wrong voucher amount %.2f, should be %.2f - fixing", ticket.InvoiceNum, currentAmount, correctAmount)
+		}
+
+		// Case 3: Multiple voucher items OR wrong amount - remove all and add correct one
+		for _, existingItem := range existingVoucherItems {
+			if err := abraClient.RemoveInvoiceItem(ticket.InvoiceNum, existingItem.ID); err != nil {
+				log.Err(err).Msgf("Failed to remove voucher item %s from invoice %s", existingItem.ID, ticket.InvoiceNum)
+			}
+		}
+
+		// Add correct voucher item
 		item := abra.FakturaPolozka{
 			Popis:   fmt.Sprintf("Slevový poukaz %s", voucher.VoucherCode),
 			Pocet:   1,
-			CenaKus: utils.CalculateTotalPriceWithVat(voucher.Price, float64(voucher.Vat)),
+			CenaKus: correctAmount,
 		}
-
 		resp, err := abraClient.AddInvoiceItem(ticket.InvoiceNum, item)
 		if err != nil {
 			log.Err(err).Msgf("Failed to add voucher item to invoice %s", ticket.InvoiceNum)
 			continue
 		}
-
 		if resp.Winstrom.Success == "true" {
-			repairedCount++
-			log.Info().Msgf("Repaired invoice %s with voucher %s (discount: %.2f)", ticket.InvoiceNum, voucher.VoucherCode, voucher.Price)
+			fixedCount++
+			log.Info().Msgf("Fixed invoice %s voucher amount to %.2f", ticket.InvoiceNum, correctAmount)
 		} else {
-			log.Warn().Msgf("Failed to repair invoice %s: %v", ticket.InvoiceNum, resp.Winstrom.Results)
+			log.Warn().Msgf("Failed to fix invoice %s: %v", ticket.InvoiceNum, resp.Winstrom.Results)
 		}
 	}
 
-	log.Info().Msgf("Invoice repair completed: %d repaired, %d duplicates removed, %d already had voucher, %d skipped", repairedCount, duplicatesRemovedCount, alreadyHasVoucherCount, skippedCount)
+	log.Info().Msgf("Invoice repair completed: %d added, %d fixed (wrong amount), %d already correct, %d skipped (no voucher)", addedCount, fixedCount, correctCount, skippedCount)
 }
 
 func PerformOrderInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient *abra.Connector) {
@@ -335,7 +361,7 @@ func PerformCreditInvoiceSync(maxadminDB, internalDB *db.Connector, abraClient *
 			}
 		}
 		items := []abra.FakturaPolozka{
-			{Popis: fmt.Sprintf("Fakturujeme vám nákup kreditů (%s) dle objednávky %s ze dne %s", fmt.Sprintf("%d", credit.Count), credit.OrderNumber, credit.Created), Pocet: 1, CenaKus: utils.CalculateTotalPriceWithVat(credit.TotalPrice, float64(credit.Vat))},
+			{Popis: fmt.Sprintf("Fakturujeme vám nákup kreditů (%.0f) dle objednávky %s ze dne %s", credit.Count, credit.OrderNumber, credit.Created), Pocet: 1, CenaKus: utils.CalculateTotalPriceWithVat(credit.TotalPrice, float64(credit.Vat))},
 		}
 		resp, err := abraClient.CreateInvoice(utils.GenerateShortCode(fmt.Sprintf("%s %s", user.Name, user.Surname)), utils.ExtractDate(credit.Created), utils.ExtractDate(credit.Created), credit.InvoiceNum, items)
 		if err != nil {

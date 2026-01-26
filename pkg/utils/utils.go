@@ -21,7 +21,7 @@ func GetFirstDayOfActualYear() string {
 }
 
 func CalculateTotalPriceWithVat(price float64, vat float64) float64 {
-	return math.Ceil(price + (price * vat / 100))
+	return math.Round(price + (price * vat / 100))
 }
 
 func GetCurrentDate() string {
